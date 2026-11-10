@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Referee: the independent second opinion on supplier CBAM data (beta)</title>
+<meta name="description" content="Law-as-data CBAM calculator with a trace for every number. Prepared for verification, not a verification statement.">
+<style>
+:root {
+  --bg: #ffffff; --fg: #14213d; --muted: #5a6478; --line: #d8dde6; --accent: #0b5fff; --accent-fg: #ffffff;
+  --card: #f5f7fb; --warn-bg: #fff6dd; --warn-fg: #5b4300; --err-bg: #fdeaea; --err-fg: #7a1111; --ok: #0a6b3a;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1422; --fg: #e8ecf5; --muted: #9aa5bd; --line: #2a3350; --accent: #6b9bff; --accent-fg: #0f1422;
+    --card: #171e33; --warn-bg: #3a3012; --warn-fg: #ffe9a3; --err-bg: #3a1717; --err-fg: #ffb4b4; --ok: #6fd9a0; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0); }
+.top, main, footer, .tabs { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+h1 { font-size: 1.35rem; margin: 16px 0 4px; }
+h2 { font-size: 1.15rem; margin: 20px 0 4px; } h3 { font-size: 1rem; margin: 18px 0 4px; }
+.beta { font-size: .7rem; background: var(--accent); color: var(--accent-fg); padding: 2px 6px; border-radius: 6px; vertical-align: middle; }
+.banner { background: var(--warn-bg); color: var(--warn-fg); padding: 8px 10px; border-radius: 8px; font-size: .9rem; margin: 8px 0; }
+.meta, .hint, footer { color: var(--muted); font-size: .88rem; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--line); padding-top: 4px; }
+.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 12px; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+form { display: grid; gap: 12px; }
+label { display: grid; gap: 4px; font-size: .92rem; }
+input, select { font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; }
+fieldset { border: 1px dashed var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 10px; }
+legend { padding: 0 6px; color: var(--muted); font-size: .88rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 12px 0; }
+.card h3 { margin-top: 0; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.error { background: var(--err-bg); color: var(--err-fg); padding: 10px; border-radius: 8px; margin: 12px 0; }
+.note { color: var(--muted); font-size: .88rem; margin: 4px 0; }
+.good { color: var(--ok); }
+details { margin: 4px 0 4px 10px; border-left: 2px solid var(--line); padding-left: 8px; }
+summary { cursor: pointer; } .trace small { color: var(--muted); display: block; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; white-space: pre-wrap; word-break: break-all; }
+footer { padding-bottom: 24px; margin-top: 24px; }
+@media print { .tabs, form, .row, .banner + .meta, button { display: none !important; } details { display: block; } details[open] > summary { font-weight: 600; } }
+
+.chk { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; font-size: .9rem; } .chk input { width: auto; margin-top: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; margin: 6px 0; } th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.badge { font-weight: 700; font-size: .7rem; padding: 2px 6px; border-radius: 4px; color: #fff; }
+.b-fail { background: #b42318; } .b-warn { background: #b54708; } .b-info { background: #475467; } .b-pass { background: #067647; }
+.verdict { padding: 10px; border-radius: 8px; margin: 10px 0; } .v-fail { background: var(--err-bg); color: var(--err-fg); } .v-warn { background: var(--warn-bg); color: var(--warn-fg); } .v-pass { background: var(--card); }
+.synthetic { background: #14213d; color: #fff; padding: 8px; border-radius: 6px; font-weight: 700; }
+.tblwrap { overflow-x: auto; } .bar { display: block; height: 4px; margin-top: 4px; background: var(--accent); border-radius: 2px; }
+#out-decide .verdict { font-size: 1.05rem; font-weight: 600; }
+#out-audit { overflow-x: auto; } ul.trace { font-size: .82rem; padding-left: 18px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Referee <span class="beta">beta</span></h1>
+  <p class="meta">The independent second opinion on supplier CBAM data.</p>
+  <p class="banner">Prepared for verification. Not a verification statement. Independent reproduction of public rules, not an official tool. Estimates only.</p>
+  <p class="meta" id="snapshot">Loading law snapshot…</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Tools">
+  <button role="tab" aria-selected="true" data-tab="audit">Supplier report audit</button>
+  <button role="tab" aria-selected="false" data-tab="decide">Is verification worth it?</button>
+  <button role="tab" aria-selected="false" data-tab="exposure">Importer exposure</button>
+  <button role="tab" aria-selected="false" data-tab="see">Fabricator SEE</button>
+  <button role="tab" aria-selected="false" data-tab="about">About</button>
+</nav>
+
+<main>
+<section id="tab-decide" class="panel" hidden>
+  <h2>Is verification worth it?</h2>
+  <p class="hint">Verified supplier values avoid the default mark-up, but verification costs money. See what it must save, year by year. Your numbers only: nothing is assumed for you.</p>
+  <form id="form-decide" novalidate>
+    <label>Country of origin <input id="d-country" list="countries" autocomplete="off" placeholder="Start typing, e.g. India" required></label>
+    <label>CN code (8 digits) <input id="d-cn" inputmode="numeric" maxlength="8" placeholder="e.g. 73181520" required></label>
+    <label>Tonnes imported per year from this supplier <input id="d-mass" inputmode="decimal" placeholder="e.g. 100" required></label>
+    <label>CBAM certificate price (€ per t CO₂e), your assumption <input id="d-price" inputmode="decimal" required></label>
+    <label>Verification cost you would bear (€ per year) <input id="d-vcost" inputmode="decimal" placeholder="from a verifier's quote" required></label>
+    <label>Supplier's reported SEE, if you have it (t CO₂e per t) <input id="d-see" inputmode="decimal" placeholder="optional"></label>
+    <label>Supplier's reported SEFA, if you have it (t CO₂e per t) <input id="d-sefa" inputmode="decimal" placeholder="optional, but it can swing the answer"></label>
+    <button type="submit" class="primary">Decide</button>
+  </form>
+  <div id="out-decide" aria-live="polite"></div>
+</section>
+
+<section id="tab-exposure" class="panel" hidden>
+  <h2>Default versus supplier values</h2>
+  <p class="hint">What will an import cost on default values, and what could a supplier's verified numbers save? Every figure carries a trace.</p>
+  <form id="form-exposure" novalidate>
+    <label>Country of origin <input id="x-country" list="countries" autocomplete="off" placeholder="Start typing, e.g. India" required></label>
+    <datalist id="countries"></datalist>
+    <label>CN code (8 digits) <input id="x-cn" inputmode="numeric" maxlength="8" placeholder="e.g. 73181520" required></label>
+    <label>Import year <input id="x-year" inputmode="numeric" value="2026" required></label>
+    <label>Mass imported (tonnes) <input id="x-mass" inputmode="decimal" placeholder="e.g. 100" required></label>
+    <label>CBAM certificate price (€ per t CO₂e) <input id="x-price" inputmode="decimal" placeholder="your own assumption"></label>
+    <fieldset>
+      <legend>Supplier's reported values (optional)</legend>
+      <label>SEE, t CO₂e per t <input id="x-asee" inputmode="decimal" placeholder="from the verified report"></label>
+      <label>SEFA, t CO₂e per t <input id="x-asefa" inputmode="decimal" placeholder="from the verified report"></label>
+    </fieldset>
+    <button type="submit" class="primary">Calculate</button>
+  </form>
+  <div id="out-exposure" aria-live="polite"></div>
+</section>
+
+<section id="tab-see" class="panel" hidden>
+  <h2>Specific embedded emissions of a fabricated good</h2>
+  <p class="hint">Own fuel emissions plus the precursor supplier's reported emissions (Guidance 5d, Example 3 style).</p>
+  <form id="form-see" novalidate>
+    <label>Activity level: tonnes of product made <input id="s-al" inputmode="decimal" required></label>
+    <label>Precursor consumed (tonnes) <input id="s-cons" inputmode="decimal" required></label>
+    <label>Precursor SEE from its verified report (t CO₂e per t) <input id="s-psee" inputmode="decimal" required></label>
+    <label>Where that value comes from <input id="s-psrc" placeholder="supplier, installation, report ID, year"></label>
+    <label>Fuel <select id="s-fuel"></select></label>
+    <label>Fuel energy per tonne of product (GJ per t) <input id="s-energy" inputmode="decimal" required></label>
+    <div class="row"><button type="submit" class="primary">Calculate</button><button type="button" id="s-example">Load official Example 3</button></div>
+  </form>
+  <div id="out-see" aria-live="polite"></div>
+</section>
+
+<section id="tab-audit" class="panel">
+  <h2>Audit a supplier's CBAM report</h2>
+  <p class="hint">Enter what the supplier's report says. The tool re-computes it, checks it against the rules and shows which numbers matter most. Try the two samples first.</p>
+  <div class="row"><button type="button" id="a-load-clean">Load official Example 3</button><button type="button" id="a-load-flawed">Load synthetic flawed example</button></div>
+  <form id="form-audit" novalidate>
+    <fieldset><legend>Case details (shown in the PDF)</legend>
+      <label>Reference <input id="a-ref" placeholder="e.g. your case number"></label>
+      <label>Importer <input id="a-importer"></label>
+      <label>Supplier / installation <input id="a-supplier"></label>
+      <label>Prepared by <input id="a-by" placeholder="your name or company"></label>
+      <label>Tonnes imported (for the exposure estimate) <input id="a-mass" inputmode="decimal"></label>
+      <label>Certificate price, € per t CO₂e (your assumption, optional) <input id="a-price" inputmode="decimal"></label>
+      <label>Verification cost you would bear, € per year (optional, adds a verify-or-default verdict) <input id="a-vcost" inputmode="decimal"></label>
+    </fieldset>
+    <fieldset><legend>Verification</legend>
+      <label>Verifier's opinion <select id="a-opinion"><option value="unknown">Not known</option><option value="positive">Positive</option><option value="qualified">Qualified</option><option value="negative">Negative</option></select></label>
+      <label>Accreditation (EU National Accreditation Body) <select id="a-accred"><option value="unknown">Not checked</option><option value="confirmed">Confirmed valid</option><option value="not_confirmed">Not valid</option></select></label>
+      <label>Accreditation covers the sector <select id="a-sector"><option value="unknown">Not checked</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+    </fieldset>
+    <fieldset><legend>The good</legend>
+      <label>Country of origin <input id="a-origin" list="countries" autocomplete="off"></label>
+      <label>CN code (8 digits) <input id="a-cn" inputmode="numeric" maxlength="8"></label>
+      <label>Production route (e.g. (C), (D), (E)) <input id="a-route"></label>
+      <label>Reporting year in the report <input id="a-year" inputmode="numeric"></label>
+      <label>Year you import in <input id="a-import" inputmode="numeric"></label>
+      <label>Tonnes produced (activity level) <input id="a-al" inputmode="decimal"></label>
+      <label>Fuel <select id="a-fuel"></select></label>
+      <label>Fuel energy per tonne of product (GJ per t) <input id="a-energy" inputmode="decimal"></label>
+      <label>Reported SEE (t CO₂e per t) <input id="a-see" inputmode="decimal"></label>
+      <label>Reported indirect emissions, if any <input id="a-indirect" inputmode="decimal"></label>
+      <label>Reported SEFA, if any <input id="a-sefa" inputmode="decimal"></label>
+    </fieldset>
+    <fieldset><legend>Precursor (purchased input)</legend>
+      <label>Precursor used? <select id="a-p-on"><option value="no">No</option><option value="yes">Yes</option></select></label>
+      <label>Tonnes consumed <input id="a-p-cons" inputmode="decimal"></label>
+      <label>Precursor SEE reported <input id="a-p-see" inputmode="decimal"></label>
+      <label>Basis <select id="a-p-src"><option value="verified">Verified supplier report</option><option value="default">Default value</option></select></label>
+      <label>Precursor origin country <input id="a-p-origin" list="countries" autocomplete="off"></label>
+      <label>Verification report reference <input id="a-p-ref"></label>
+      <label>Precursor period (year) <input id="a-p-year" inputmode="numeric"></label>
+      <label>Precursor mass ratio m reported <input id="a-p-m" inputmode="decimal"></label>
+    </fieldset>
+    <fieldset><legend>Aluminium goods only</legend>
+      <label>Scrap used per tonne <input id="a-al1" inputmode="decimal"></label>
+      <label>Pre-consumer scrap share (%) <input id="a-al2" inputmode="decimal"></label>
+      <label>Alloy content above 1% (%) <input id="a-al3" inputmode="decimal"></label>
+    </fieldset>
+    <fieldset><legend>What you received</legend><div id="a-checklist"></div></fieldset>
+    <button type="submit" class="primary">Audit this report</button>
+  </form>
+  <div id="out-audit" aria-live="polite"></div>
+</section>
+
+<section id="tab-about" class="panel" hidden>
+  <h2>How this works</h2>
+  <ul>
+    <li><strong>Derived, never typed.</strong> Results come from your inputs plus legal factors. Click any result's trace to see formula, inputs and source.</li>
+    <li><strong>Law is data.</strong> Defaults, benchmarks and factors are built from the Official Journal texts and the Commission's workbooks, with the source row recorded.</li>
+    <li><strong>Fail closed.</strong> If a case is ambiguous or unsupported, the tool refuses rather than guesses.</li>
+    <li><strong>No data leaves your device.</strong> Calculations run in your browser; nothing you enter is sent anywhere.</li>
+  </ul>
+  <h3>Known limits</h3>
+  <ul id="limits"></ul>
+  <h3>Data snapshot</h3>
+  <pre id="manifest" class="mono"></pre>
+</section>
+</main>
+<footer><p>Not legal advice. Actual emissions only count if verified by an accredited verifier. Check the Official Journal for the binding text.</p></footer>
+<script src="pdf-lib.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
